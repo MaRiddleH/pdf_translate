@@ -40,12 +40,20 @@ Pandoc 用于 Markdown 到 DOCX 的转换，需要单独安装：
 
 ### 3. 配置 API 密钥
 
-编辑 `.env` 文件，填入你的阿里云 API 密钥：
+复制 `.env.example` 文件为 `.env`，然后填入你的阿里云 API 密钥：
+
+```bash
+copy .env.example .env
+```
+
+编辑 `.env` 文件：
 
 ```
 ALIYUN_KEY=sk-your-api-key-here
 ALIYUN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 ```
+
+**获取 API 密钥**：访问 [阿里云 DashScope 控制台](https://dashscope.console.aliyun.com/apiKey) 创建 API Key。
 
 ### 4. 使用方法
 
@@ -74,7 +82,8 @@ pdf_translate/
 ├── aims/                     # PDF 输入目录 / 临时处理目录
 ├── output/                   # 最终输出文件目录
 ├── media/                    # 提取的图片文件（由 pandoc 生成）
-├── .env                      # API 密钥配置
+├── .env                      # API 密钥配置（需自行创建）
+├── .env.example              # API 密钥配置模板
 ├── requirements.txt          # Python 依赖
 ├── translate_md.py           # 翻译脚本
 ├── convert_md_to_docx.py     # MD 转 DOCX 脚本
