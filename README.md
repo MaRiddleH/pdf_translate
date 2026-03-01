@@ -82,9 +82,11 @@ pdf_translate/
 ├── aims/                     # PDF 输入目录 / 临时处理目录
 ├── output/                   # 最终输出文件目录
 ├── media/                    # 提取的图片文件（由 pandoc 生成）
-├── .env                      # API 密钥配置（需自行创建）
-├── .env.example              # API 密钥配置模板
+├── logs/                     # 日志文件目录
+├── .env                      # 配置文件中可修改）
+├── .env.example              # 配置模板（所有配置项的详细说明）
 ├── requirements.txt          # Python 依赖
+├── logger_config.py          # 日志配置模块
 ├── translate_md.py           # 翻译脚本
 ├── convert_md_to_docx.py     # MD 转 DOCX 脚本
 ├── install.bat               # 安装脚本
@@ -95,11 +97,62 @@ pdf_translate/
 
 ## 翻译配置
 
-`translate_md.py` 中可修改翻译相关配置：
+所有翻译配置都在 `.env` 文件中，主要配置项如下：
 
-- **专业领域**：当前针对化学与环境专业优化
-- **模型**：使用 `qwen-plus` 模型
-- **分块大小**：默认 3000 字符/块，避免超出 API 限制
+### API 密钥配置
+
+| 配置项 | 说明 | 默认值 |
+|--------|------|--------|
+| `ALIYUN_KEY` | 阿里云 DashScope API 密钥（必填） | - |
+| `ALIYUN_BASE_URL` | API 基础 URL | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
+
+### 翻译模型配置
+
+| 配置项 | 说明 | 默认值 |
+|--------|------|--------|
+| `TRANSLATE_MODEL` | 使用的翻译模型 | `qwen-plus` |
+| `TRANSLATE_PROMPT` | 翻译提示词模板 | 化学与环境专业提示词 |
+| `TRANSLATE_TEMPERATURE` | 模型温度（0.0-2.0） | `0.3` |
+| `TRANSLATE_MAX_TOKENS` | 最大生成 token 数 | `2000` |
+
+### 文本分块配置
+
+| 配置项 | 说明 | 默认值 |
+|--------|------|--------|
+| `MAX_CHUNK_SIZE` | 最大分块大小（字符数） | `3000` |
+
+### 速率限制配置
+
+| 配置项 | 说明 | 默认值 |
+|--------|------|--------|
+| `CHUNK_DELAY` | 翻译块之间的延迟（秒） | `2` |
+| `FILE_DELAY` | 翻译文件之间的延迟（秒） | `5` |
+
+### 日志配置
+
+| 配置项 | 说明 | 默认值 |
+|--------|------|--------|
+| `LOG_LEVEL` | 日志级别 | `INFO` |
+| `LOG_DIR` | 日志目录 | `logs` |
+| `LOG_MAX_BYTES` | 单个日志文件最大大小 | `10485760` (10MB) |
+| `LOG_BACKUP_COUNT` | 保留的备份日志文件数 | `3` |
+
+**完整配置说明**：请复制 `.env.example` 文件查看详细的配置注释。
+
+### 修改专业领域
+
+在 `.env` 文件中修改 `TRANSLATE_PROMPT` 配置项，例如：
+
+```
+# 法律专业
+TRANSLATE_PROMPT=你是一个法律专业翻译助手。请将以下内容准确、流畅地翻译成中文...
+
+# 医学专业
+TRANSLATE_PROMPT=你是一个医学专业翻译助手。请将以下内容准确、流畅地翻译成中文...
+
+# 计算机专业
+TRANSLATE_PROMPT=你是一个计算机专业翻译助手。请将以下内容准确、流畅地翻译成中文...
+```
 
 ## 常见问题
 

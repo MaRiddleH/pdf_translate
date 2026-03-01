@@ -1,16 +1,35 @@
 # Copyright (c) Opendatalab. All rights reserved.
 import os
 import re
-import json
 import time
 from pathlib import Path
 import dashscope
 from dashscope import Generation
 from tqdm import tqdm
-from logger_config import setup_logger
+from logger_config import setup_logger, get_env_config
 
 # 设置日志
 logger = setup_logger(__name__)
+
+
+def get_translate_config():
+    """
+    从 .env 文件读取翻译配置。
+
+    Returns:
+        dict: 包含翻译配置的字典
+    """
+    return {
+        "api_key": os.getenv("ALIYUN_KEY"),
+        "model": os.getenv("TRANSLATE_MODEL", "qwen-plus"),
+        "prompt": os.getenv("TRANSLATE_PROMPT"),
+        "temperature": float(os.getenv("TRANSLATE_TEMPERATURE", 0.3)),
+        "max_tokens": int(os.getenv("TRANSLATE_MAX_TOKENS", 2000)),
+        "max_chunk_size": int(os.getenv("MAX_CHUNK_SIZE", 3000)),
+        "chunk_delay": float(os.getenv("CHUNK_DELAY", 2)),
+        "file_delay": float(os.getenv("FILE_DELAY", 5)),
+    }
+
 
 # Read API keys from .env file
 def read_api_keys():
@@ -22,38 +41,57 @@ def read_api_keys():
         logger.error(f"File {env_path} does not exist.")
         return None
 
-    with open(env_path, 'r', encoding='utf-8') as f:
-        lines = f.readlines()
+    try:
+        with open(env_path, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
 
-    aliyun_key = None
+        aliyun_key = None
 
-    for line in lines:
-        line = line.strip()
-        if line.startswith('ALIYUN_KEY='):
-            aliyun_key = line.split('=', 1)[1]
+        for line in lines:
+            line = line.strip()
+            if line.startswith('ALIYUN_KEY='):
+                aliyun_key = line.split('=', 1)[1]
 
-    return aliyun_key
+        return aliyun_key
+    except UnicodeDecodeError:
+        # 尝试使用 gbk 编码读取（Windows 常见）
+        try:
+            with open(env_path, 'r', encoding='gbk') as f:
+                content = f.read()
+            for line in content.splitlines():
+                line = line.strip()
+                if line.startswith('ALIYUN_KEY='):
+                    return line.split('=', 1)[1]
+        except Exception:
+            pass
+        logger.error(f"Failed to read {env_path} with supported encodings.")
+        return None
 
-# Translate text using Aliyun qwen_plus model
-def translate_text(text, aliyun_key):
+
+# Translate text using Aliyun model
+def translate_text(text, config):
     """
-    Translate text to Chinese using Aliyun qwen_plus model
+    Translate text to Chinese using Aliyun model.
+
+    Args:
+        text: Text to translate
+        config: Translation configuration dict
+
+    Returns:
+        Translated text
     """
     if not text.strip():
         return text
 
-    prompt = (
-        f"你是一个化学与环境专业的翻译助手。请将以下内容准确、流畅地翻译成中文，"
-        f"原文中有较多的化学公式和环境相关的专业术语。"
-        f"请保持原意，不要添加解释、不要输出原文，只输出译文。\n\n{text}"
-    )
+    # 构建提示词
+    prompt = f"{config['prompt']}\n\n{text}"
 
     try:
         response = Generation.call(
-            model="qwen-plus",
+            model=config["model"],
             prompt=prompt,
-            temperature=0.3,
-            max_tokens=2000
+            temperature=config["temperature"],
+            max_tokens=config["max_tokens"]
         )
         if response.status_code == 200:
             return response.output.text.strip()
@@ -63,6 +101,7 @@ def translate_text(text, aliyun_key):
     except Exception as e:
         logger.exception(f"Exception during translation: {e}")
         return text
+
 
 # Split markdown content into chunks while preserving structure
 def split_markdown_content(content, max_chunk_size=3000):
@@ -176,49 +215,58 @@ def split_markdown_content(content, max_chunk_size=3000):
 
     return chunks
 
+
 # Translate markdown content with chunking
-def translate_markdown_with_chunking(content, aliyun_key, max_chunk_size=3000):
+def translate_markdown_with_chunking(content, config):
     """
     Translate markdown content by splitting into chunks and translating each chunk
 
     Args:
         content: Markdown content to translate
-        aliyun_key: Aliyun API key
-        max_chunk_size: Maximum size of each chunk in characters
+        config: Translation configuration dict
 
     Returns:
         Translated markdown content
     """
     # Split content into chunks
-    chunks = split_markdown_content(content, max_chunk_size)
+    chunks = split_markdown_content(content, config["max_chunk_size"])
     logger.info(f"Split content into {len(chunks)} chunks")
 
     # Translate each chunk
     translated_chunks = []
     for i, chunk in enumerate(tqdm(chunks, desc="Translating chunks", unit="chunk")):
         tqdm.write(f"Translating chunk {i+1}/{len(chunks)}")
-        translated_chunk = translate_text(chunk, aliyun_key)
+        translated_chunk = translate_text(chunk, config)
         translated_chunks.append(translated_chunk)
         # Add delay between chunks to avoid rate limiting
-        time.sleep(2)
+        time.sleep(config["chunk_delay"])
 
     # Combine translated chunks
     translated_content = '\n'.join(translated_chunks)
     return translated_content
+
 
 # Translate all markdown files under aims directory
 def translate_all_md_files():
     """
     Translate all markdown files under aims directory to Chinese
     """
+    # Read translation configuration
+    config = get_translate_config()
+
     # Read API keys
-    aliyun_key = read_api_keys()
-    if not aliyun_key:
+    if not config["api_key"]:
+        config["api_key"] = read_api_keys()
+
+    if not config["api_key"]:
         logger.error("Failed to read API keys from .env file.")
         return
 
     # Set API Key
-    dashscope.api_key = aliyun_key
+    dashscope.api_key = config["api_key"]
+
+    logger.info(f"Using translation model: {config['model']}")
+    logger.info(f"Chunk size: {config['max_chunk_size']}, Temperature: {config['temperature']}")
 
     # Get aims directory path
     aims_dir = Path("./aims")
@@ -260,7 +308,7 @@ def translate_all_md_files():
                 content = f.read()
 
             # Translate content with chunking
-            translated_content = translate_markdown_with_chunking(content, aliyun_key)
+            translated_content = translate_markdown_with_chunking(content, config)
 
             if translated_content:
                 # Write translated content back to a new file with _zh suffix
@@ -272,13 +320,14 @@ def translate_all_md_files():
                 tqdm.write(f"Failed to translate {md_file.name}")
 
             # Add a delay to avoid rate limiting
-            time.sleep(5)
+            time.sleep(config["file_delay"])
 
         except Exception as e:
             tqdm.write(f"Error translating {md_file.name}: {str(e)}")
             logger.exception(f"Error translating {md_file}: {e}")
 
     logger.info("Translation process completed.")
+
 
 if __name__ == "__main__":
     translate_all_md_files()
