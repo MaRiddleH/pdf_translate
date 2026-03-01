@@ -4,17 +4,13 @@ import re
 import json
 import time
 from pathlib import Path
-import logging
 import dashscope
 from dashscope import Generation
 from tqdm import tqdm
+from logger_config import setup_logger
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# 设置日志
+logger = setup_logger(__name__)
 
 # Read API keys from .env file
 def read_api_keys():

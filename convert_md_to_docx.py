@@ -2,14 +2,10 @@
 import subprocess
 import os
 from pathlib import Path
-import logging
+from logger_config import setup_logger
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# 设置日志
+logger = setup_logger(__name__)
 
 
 def set_docx_fonts(docx_path):
