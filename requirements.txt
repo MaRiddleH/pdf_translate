@@ -1,0 +1,8 @@
+# MinerU - PDF to Markdown converter
+mineru[all]
+
+# Translation
+dashscope
+
+# DOCX conversion
+python-docx
