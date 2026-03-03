@@ -3,10 +3,14 @@ import os
 import re
 import time
 from pathlib import Path
+from dotenv import load_dotenv
 import dashscope
 from dashscope import Generation
 from tqdm import tqdm
 from logger_config import setup_logger, get_env_config
+
+# Load .env file
+load_dotenv()
 
 # 设置日志
 logger = setup_logger(__name__)
